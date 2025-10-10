@@ -53,10 +53,12 @@
             const [runningFrameIndex, setRunningFrameIndex] = useState(0);
             const [showLeaderboard, setShowLeaderboard] = useState(false);
             const [leaderboardData, setLeaderboardData] = useState([]);
+            const [isMusicPlaying, setIsMusicPlaying] = useState(false);
             const gameLoopRef = useRef(null);
             const animationLoopRef = useRef(null);
             const coinIdRef = useRef(0);
             const obstacleIdRef = useRef(0);
+            const audioRef = useRef(null);
             
             // Local mascot images
             const runningFrames = [
@@ -66,6 +68,46 @@
             const jumpingFrame = "https://raw.githubusercontent.com/Jeetudaiyar/hold-runner/main/mascot-jump.png";
             const fallingFrame = "https://raw.githubusercontent.com/Jeetudaiyar/hold-runner/main/mascot-fall.png";
             const cloudImage = "https://raw.githubusercontent.com/Jeetudaiyar/hold-runner/main/cloud.png";
+
+            // Initialize audio
+            useEffect(() => {
+                audioRef.current = new Audio('https://raw.githubusercontent.com/Jeetudaiyar/hold-runner/main/background-music.mp3');
+                audioRef.current.loop = true;
+                audioRef.current.volume = 0.4;
+                
+                return () => {
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current = null;
+                    }
+                };
+            }, []);
+
+            // Toggle music
+            const toggleMusic = () => {
+                if (audioRef.current) {
+                    if (isMusicPlaying) {
+                        audioRef.current.pause();
+                        setIsMusicPlaying(false);
+                    } else {
+                        audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+                        setIsMusicPlaying(true);
+                    }
+                }
+            };
+
+            // Auto-play music when game starts
+            useEffect(() => {
+                if (gameStarted && !gameOver && audioRef.current && !isMusicPlaying) {
+                    audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+                    setIsMusicPlaying(true);
+                }
+                // Stop music when mascot hits obstacle (game over)
+                if (gameOver && audioRef.current && isMusicPlaying) {
+                    audioRef.current.pause();
+                    setIsMusicPlaying(false);
+                }
+            }, [gameStarted, gameOver]);
 
             // Load leaderboard from memory
             useEffect(() => {
@@ -376,14 +418,23 @@
                                 </h1>
                                 <p className="text-sm text-gray-600 mt-1">Let's see how much $ you can collect!</p>
                             </div>
-                            {walletAddress && (
-                                <div className="text-right">
-                                    <div className="text-xs text-gray-500">Wallet</div>
-                                    <div className="text-sm font-mono bg-purple-100 px-3 py-1 rounded-lg text-purple-700">
-                                        {truncateAddress(walletAddress)}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={toggleMusic}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition"
+                                    title={isMusicPlaying ? 'Mute Music' : 'Play Music'}
+                                >
+                                    {isMusicPlaying ? '🔊' : '🔇'}
+                                </button>
+                                {walletAddress && (
+                                    <div className="text-right">
+                                        <div className="text-xs text-gray-500">Wallet</div>
+                                        <div className="text-sm font-mono bg-purple-100 px-3 py-1 rounded-lg text-purple-700">
+                                            {truncateAddress(walletAddress)}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                         <p className="text-center text-gray-600 mb-4 italic">
                             "Collecting houses and gold in today's economy be like..."
