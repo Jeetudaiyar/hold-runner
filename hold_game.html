@@ -8,11 +8,32 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXm5ZClI_Jb2532QWnijMmW_5PDvQ6kRQ",
+            authDomain: "hold-runner.firebaseapp.com",
+            databaseURL: "https://hold-runner-default-rtdb.firebaseio.com",
+            projectId: "hold-runner",
+            storageBucket: "hold-runner.firebasestorage.app",
+            messagingSenderId: "90012297597",
+            appId: "1:90012297597:web:b8e0876a62b99ad633c414"
+        };
+
+        // Initialize Firebase (only once)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
 
         // Home icon component
         const Home = ({ className }) => (
@@ -109,12 +130,25 @@
                 }
             }, [gameStarted, gameOver]);
 
-            // Load leaderboard from memory
+            // Load leaderboard from Firebase
             useEffect(() => {
-                const stored = leaderboardData;
-                if (stored && stored.length > 0) {
-                    setLeaderboardData(stored);
-                }
+                const leaderboardRef = database.ref('leaderboard');
+                
+                leaderboardRef.orderByChild('score').limitToLast(20).on('value', (snapshot) => {
+                    const scores = [];
+                    snapshot.forEach((childSnapshot) => {
+                        scores.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    // Sort by score descending (Firebase returns ascending)
+                    scores.sort((a, b) => b.score - a.score);
+                    setLeaderboardData(scores);
+                });
+
+                // Cleanup listener on unmount
+                return () => leaderboardRef.off();
             }, []);
 
             // Submit wallet address
@@ -133,26 +167,24 @@
                 setShowWalletPrompt(false);
             };
 
-            // Save score to memory
+            // Save score to Firebase
             const saveScore = (finalScore, finalDistance) => {
                 const newEntry = {
                     wallet: walletAddress,
                     score: finalScore,
                     distance: finalDistance,
-                    timestamp: new Date().toISOString(),
+                    timestamp: Date.now(),
                     date: new Date().toLocaleDateString()
                 };
 
-                let leaderboard = [...leaderboardData];
-                leaderboard.push(newEntry);
-                
-                // Sort by score (highest first)
-                leaderboard.sort((a, b) => b.score - a.score);
-                
-                // Keep top 50 scores
-                leaderboard = leaderboard.slice(0, 50);
-                
-                setLeaderboardData(leaderboard);
+                // Push to Firebase
+                database.ref('leaderboard').push(newEntry)
+                    .then(() => {
+                        console.log('Score saved to Firebase!');
+                    })
+                    .catch((error) => {
+                        console.error('Error saving score:', error);
+                    });
             };
 
             const getEndMessage = (finalScore) => {
@@ -266,7 +298,7 @@
                         }]);
                     }
 
-                    if (Math.random() < 0.015) {
+                    if (Math.random() < 0.03) {
                         setObstacles(prev => [...prev, {
                             id: obstacleIdRef.current++,
                             x: 105,
@@ -361,8 +393,15 @@
             };
 
             const clearLeaderboard = () => {
-                if (confirm('Are you sure you want to clear all scores?')) {
-                    setLeaderboardData([]);
+                if (confirm('Are you sure you want to clear all scores? This will delete all data from Firebase!')) {
+                    database.ref('leaderboard').remove()
+                        .then(() => {
+                            console.log('Leaderboard cleared!');
+                            setLeaderboardData([]);
+                        })
+                        .catch((error) => {
+                            console.error('Error clearing leaderboard:', error);
+                        });
                 }
             };
 
