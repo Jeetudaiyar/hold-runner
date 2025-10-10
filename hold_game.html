@@ -642,15 +642,7 @@
 
                         {showLeaderboard && (
                             <div className="mt-6 border-t pt-4">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-2xl font-bold text-amber-600">🏆 Leaderboard</h3>
-                                    <button
-                                        onClick={clearLeaderboard}
-                                        className="text-xs text-red-500 hover:text-red-700"
-                                    >
-                                        Clear All
-                                    </button>
-                                </div>
+                                <h3 className="text-2xl font-bold text-amber-600 mb-3">🏆 Leaderboard</h3>
                                 <div className="max-h-64 overflow-y-auto">
                                     {leaderboardData.length === 0 ? (
                                         <p className="text-center text-gray-500 py-4">No scores yet. Be the first!</p>
