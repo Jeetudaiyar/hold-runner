@@ -40,8 +40,10 @@
             const [gameStarted, setGameStarted] = useState(false);
             const [gameOver, setGameOver] = useState(false);
             const [isFalling, setIsFalling] = useState(false);
+            const [isFastFalling, setIsFastFalling] = useState(false);
+            const [jumpCount, setJumpCount] = useState(0);
             const [score, setScore] = useState(0);
-            const [playerY, setPlayerY] = useState(60);
+            const [playerY, setPlayerY] = useState(65);
             const [isJumping, setIsJumping] = useState(false);
             const [velocity, setVelocity] = useState(0);
             const [coins, setCoins] = useState([]);
@@ -126,9 +128,19 @@
             };
 
             const jump = () => {
-                if (!isJumping && gameStarted && !gameOver && !isFalling) {
+                if (gameStarted && !gameOver && !isFalling && jumpCount < 3) {
                     setIsJumping(true);
-                    setVelocity(-9);
+                    setIsFastFalling(false);
+                    setJumpCount(prev => prev + 1);
+                    setVelocity(-6); // Balanced jump velocity
+                }
+            };
+
+            const fastFall = () => {
+                if (isJumping && gameStarted && !gameOver && !isFalling && playerY < 65) {
+                    setIsFastFalling(true);
+                    setVelocity(12); // Fast downward velocity
+                    setJumpCount(3); // Prevent more jumps after fast fall
                 }
             };
 
@@ -138,10 +150,14 @@
                         e.preventDefault();
                         jump();
                     }
+                    if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        fastFall();
+                    }
                 };
                 window.addEventListener('keydown', handleKeyPress);
                 return () => window.removeEventListener('keydown', handleKeyPress);
-            }, [isJumping, gameStarted, gameOver, isFalling]);
+            }, [isJumping, gameStarted, gameOver, isFalling, playerY, jumpCount]);
 
             // Falling animation when hit
             useEffect(() => {
@@ -169,9 +185,11 @@
                         setVelocity(prev => prev + 0.8);
                         setPlayerY(prev => {
                             const newY = prev + velocity;
-                            if (newY >= 60) {
+                            if (newY >= 65) {
                                 setIsJumping(false);
-                                return 60;
+                                setIsFastFalling(false);
+                                setJumpCount(0); // Reset jump count when landing
+                                return 65;
                             }
                             return newY;
                         });
@@ -233,7 +251,7 @@
                     clearInterval(gameLoopRef.current);
                     clearInterval(animationLoopRef.current);
                 };
-            }, [gameStarted, gameOver, velocity, distance, isJumping, isFalling]);
+            }, [gameStarted, gameOver, velocity, distance, isJumping, isFalling, jumpCount]);
 
             useEffect(() => {
                 if (!gameStarted || gameOver || isFalling) return;
@@ -250,7 +268,7 @@
                 });
 
                 obstacles.forEach(obs => {
-                    if (obs.x > 11 && obs.x < 21 && playerY >= 50) {
+                    if (obs.x > 11 && obs.x < 21 && playerY >= 57) {
                         setIsFalling(true);
                         setVelocity(2);
                         clearInterval(animationLoopRef.current);
@@ -262,8 +280,10 @@
                 setGameStarted(true);
                 setGameOver(false);
                 setIsFalling(false);
+                setIsFastFalling(false);
+                setJumpCount(0);
                 setScore(0);
-                setPlayerY(60);
+                setPlayerY(65);
                 setVelocity(0);
                 setIsJumping(false);
                 setCoins([]);
@@ -280,8 +300,10 @@
                 setGameStarted(false);
                 setGameOver(false);
                 setIsFalling(false);
+                setIsFastFalling(false);
+                setJumpCount(0);
                 setScore(0);
-                setPlayerY(60);
+                setPlayerY(65);
                 setVelocity(0);
                 setIsJumping(false);
                 setCoins([]);
@@ -405,7 +427,8 @@
                                         >
                                             Start Running!
                                         </button>
-                                        <p className="text-white mt-4 text-lg">Press SPACE or ↑ to jump!</p>
+                                        <p className="text-white mt-4 text-lg">Press SPACE or ↑ to jump (max 3 times)!</p>
+                                        <p className="text-white text-sm">Press S or ↓ to fall faster while in air!</p>
                                     </div>
                                 </div>
                             )}
@@ -453,7 +476,7 @@
                                         imageRendering: 'crisp-edges'
                                     }}
                                 />
-                                {!isJumping && !isFalling && (
+                                {!isJumping && !isFalling && !isFastFalling && (
                                     <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-10 h-3 bg-black opacity-30 rounded-full blur-sm"></div>
                                 )}
                             </div>
@@ -523,7 +546,7 @@
                         </div>
 
                         <div className="mt-4 text-center text-gray-600">
-                            <p className="font-semibold">Press SPACE or ↑ to jump over obstacles and collect coins!</p>
+                            <p className="font-semibold">Press SPACE or ↑ to jump (up to 3 times) | Press S or ↓ to fall faster!</p>
                             <p className="text-sm mt-1">💰 Coin = $1 | 🏠 House Coin = $2</p>
                         </div>
 
